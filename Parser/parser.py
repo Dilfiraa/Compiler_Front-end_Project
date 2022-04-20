@@ -126,7 +126,7 @@ class Parser:
     def print_rules_table(self):
         seq = 1
         for line in self.rules_table:
-            print(f'{seq}   {line[0]}   {line[1]}')
+            print(f'{seq}\t{line[0]}\t{line[1]}')
             seq += 1
 
     @staticmethod
@@ -242,9 +242,9 @@ class Parser:
             for first_ter in self.first_of_rhs(rule[1]):
                 if '$' == first_ter:
                     for follow_ter in self.follow_set[rule[0]]:
-                        self.parsing_table[rule[0] + ' ' + follow_ter] = seq_num
+                        self.parsing_table[(rule[0], follow_ter)] = seq_num
                 else:
-                    self.parsing_table[rule[0] + ' ' + first_ter] = seq_num
+                    self.parsing_table[(rule[0], first_ter)] = seq_num
             seq_num += 1
 
         # for line in self.parsing_table:
@@ -263,8 +263,8 @@ class Parser:
                 print(f'{seq_num}\t/\t{self.symbol_stack[-1]}#{self.tokens_queue[0].name}\tmove')
                 self.symbol_stack.pop()
                 self.tokens_queue.pop(0)
-            elif self.symbol_stack[-1] + ' ' + self.tokens_queue[0].name in self.parsing_table:
-                rule_num = self.parsing_table[self.symbol_stack[-1] + ' ' + self.tokens_queue[0].name]
+            elif (self.symbol_stack[-1], self.tokens_queue[0].name) in self.parsing_table:
+                rule_num = self.parsing_table[(self.symbol_stack[-1], self.tokens_queue[0].name)]
                 if self.rules_table[rule_num][1] == ['$']:
                     print(f'{seq_num}\t{rule_num+1}\t{self.symbol_stack[-1]}#{self.tokens_queue[0].name}\treduction')
                     self.symbol_stack.pop()
@@ -376,4 +376,5 @@ parser.print_first_or_follow('logicalOperator', 'follow')
 # print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')
 #
 # lhs = 'tableSourceItem'
-# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')
+# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')、
+
