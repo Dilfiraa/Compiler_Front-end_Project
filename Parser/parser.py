@@ -6,25 +6,6 @@ class Token:
         self.name = name
 
 
-Terminals1 = {'a', 'b', 'c', 'd', 'g', 'h', '$'}
-Terminals2 = {'SELECT', 'FROM', 'WHERE', 'AS', '*',
-              'INSERT', 'INTO', 'VALUES', 'VALUE', 'DEFAULT',
-              'UPDATE', 'SET',
-              'DELETE',
-              'JOIN', 'LEFT', 'RIGHT', 'ON',
-              'MIN', 'MIN', 'MAX', 'AVG', 'SUM',
-              'UNION', 'ALL',
-              'GROUP BY', 'HAVING', 'DISTINCT', 'ORDER BY',
-              'TRUE', 'FALSE', 'UNKNOWN', 'IS', 'NULL',
-              '=', '>', '<', '>=', '<=', '!=', '<=>',
-              'AND', '&&', '||', 'OR', 'XOR', 'NOT', '!',
-              '-',
-              '.',
-              '(', ')', ',',
-              'IDN', 'INT', 'FLOAT', 'STRING', '$'}
-Terminals3 = {'*', '+', '(', ')', 'id', '$'}
-
-
 class Parser:
     def __init__(self, terminals, grammar_file, start_symbol, tokens):
         self.first_set = {}
@@ -168,8 +149,6 @@ class Parser:
                 print(f'{self.rules_table[rule_num][0]} -> {self.rules_table[rule_num][1]}')
             print()
 
-        # for line in self.pre_follow_dict:
-        #     print(f'{line}  {self.pre_follow_dict[line]}')
 
     def first_of_rhs(self, rhs_list):
 
@@ -215,7 +194,6 @@ class Parser:
 
         # need to be optimize!!!
         for item in temp:
-            # print(f'{item}  {temp[item]}')
             for nt in temp[item]:
                 self.add_lists(self.follow_set[item], self.follow_set[nt], False)
 
@@ -247,16 +225,10 @@ class Parser:
                     self.parsing_table[(rule[0], first_ter)] = seq_num
             seq_num += 1
 
-        # for line in self.parsing_table:
-        #     print(f'{line}\t{self.rules_table[self.parsing_table[line]][0]} -> '
-        #           f'{self.rules_table[self.parsing_table[line]][1]}')
 
     def parse_tokens(self):
         seq_num = 1
         self.tokens_queue.append(Token('#'))
-
-        # self.print_tokens_queue()
-        # self.print_symbol_stack()
 
         while len(self.tokens_queue):
             if self.symbol_stack[-1] == self.tokens_queue[0].name:
@@ -276,9 +248,6 @@ class Parser:
             else:
                 print('Error!')
                 return
-
-            # self.print_tokens_queue()
-            # self.print_symbol_stack()
 
             seq_num += 1
 
@@ -314,67 +283,5 @@ class Parser:
             print("Error : Option should be 'first' or 'follow'.")
 
 
-token_name_list = ['id', '*', 'id', '+', 'id']
-token_name_list = ['SELECT', '*', 'FROM', 'IDN', 'WHERE', 'IDN', '.', 'IDN', '>', 'NUM']
-token_name_list = ['SELECT', 'IDN', '.', 'IDN', 'FROM', 'IDN', 'WHERE', 'IDN', '.', 'IDN', '>', 'INT']
 
-tokens = []
-for t in token_name_list:
-    tokens.append(Token(t))
-
-for token in tokens:
-    print(token.name, end=' ')
-print()
-
-start_symbol = 'root'
-grammar_file = 'grammar.txt'
-
-
-parser = Parser(terminals=Terminals2, grammar_file=grammar_file, start_symbol=start_symbol, tokens=tokens)
-parser.generate_rules_table()
-# parser.print_rules_table()
-parser.generate_pre_first_dict()
-# parser.print_pre_first_dict()
-parser.generate_first_set()
-# parser.print_first_set()
-parser.generate_pre_follow_dict()
-# parser.print_pre_follow_dict()
-parser.generate_follow_set()
-# parser.print_follow_set()
-
-parser.generate_parsing_table()
-# parser.print_tokens()
-parser.parse_tokens()
-
-parser.print_first_or_follow('functionCall', 'follow')
-parser.print_first_or_follow('functionCall', 'first')
-parser.print_first_or_follow('logicalOperator', 'follow')
-# lhs = 'functionCall'
-# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')
-#
-# lhs = 'logicalOperator'
-# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')
-#
-# lhs = 'elementNameAlias'
-# print(f'\nfirst:    {lhs} = {parser.first_set[lhs]}')
-
-# lhs = 'selectElement'
-# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')
-
-# lhs = 'uid'
-# print(f'\nfirst:   {lhs} = {parser.first_set[lhs]}')
-#
-# lhs = 'elementNameAlias'
-# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')
-#
-# lhs = 'elementNameAlias'
-# print(f'\nfirst:   {lhs} = {parser.first_set[lhs]}')
-#
-#
-# # + tableSourceItem
-# lhs = 'selectElement'
-# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')
-#
-# lhs = 'tableSourceItem'
-# print(f'\nfollow:   {lhs} = {parser.follow_set[lhs]}')、
 
