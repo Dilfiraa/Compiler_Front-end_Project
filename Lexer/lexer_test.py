@@ -1,3 +1,16 @@
+from lexer import *
+import nfa_definition
+
+nfa = NFA(nfa_definition.nfa_start, nfa_definition.nfa_accept, nfa_definition.nfa_trans)
+dfa = nfa.nfa2dfa()
+# lexer = Lexer(dfa)
+mini_dfa = dfa.dfa_minimization()
+lexer = Lexer(dfa)
+text = 'SELECT * \nFROM T07 \nWHERE 0.0 T07.A != "BLA BLA"'
+text = text.replace('\n', ' ')
+lexer.lexical_analysis(text)
+
+
 fun = {1: {'a': [4, 5], '$': [2]},
        2: {'a': [3]},
        3: {'$': [8]},
@@ -43,4 +56,6 @@ acc = {2: ['KW', 1],
        6: ['KW', 2],
        8: ['IDN'],
        }
+
+
 
