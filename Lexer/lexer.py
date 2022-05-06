@@ -24,6 +24,19 @@ class NFA:
         self.start_state = start_state
         self.accept_states = accept_states
         self.trans_function = trans_function
+        self.non_accept_states = self.get_non_accept_states()
+
+    def get_non_accept_states(self):
+        result = {}
+
+        for s1 in self.trans_function:
+            if s1 not in self.accept_states:
+                result[s1] = None
+            for t in self.trans_function[s1]:
+                for s2 in self.trans_function[s1][t]:
+                    if s2 not in self.accept_states:
+                        result[s2] = None
+        return result
 
     def closure(self, states):
         queue = []
@@ -60,7 +73,6 @@ class NFA:
         # create dict to store transfer function and accept states of DFA
         dfa_trans_func = {}
         dfa_accept_state = {}
-        dfa_all_states = {}
 
         # execute till the queue is empty
         while len(queue):
@@ -120,13 +132,18 @@ class DFA:
 
         self.start_state = start_state
         self.accept_states = accept_states
-
         self.trans_function = trans_function
-        self.non_accept_states = self.get_non_accept_states()
 
         # use to run dfa
         self.cur_state = tuple(self.start_state)
         self.pre_state = None
+
+        # use to minimize dfa
+        self.non_accept_states = self.get_non_accept_states()
+        self.state_sets = None
+        self.sets_max_sqe = {'NON': 0, 'IDN': 0, 'INT': 0}
+
+        self.state_num = len(self.accept_states) + len(self.non_accept_states)
 
     def get_non_accept_states(self):
         result = {}
@@ -143,6 +160,7 @@ class DFA:
     def print_non_accept_states(self):
         for s in self.non_accept_states:
             print(s)
+        print()
 
     def print_trans_function(self):
         print("DFA transfer function")
@@ -156,6 +174,14 @@ class DFA:
             print(f'{state}\t{self.accept_states[state]}')
         print()
 
+    def print_state_sets(self):
+        for state_name in self.state_sets:
+            print(state_name, end='\t')
+            for s in self.state_sets[state_name]:
+                print(s, end=' ')
+            print()
+        print()
+
     def run_on_dfa(self, char):
         self.pre_state = self.cur_state
         try:
@@ -166,8 +192,138 @@ class DFA:
 
         return self.pre_state, self.cur_state
 
+    def sets(self, category):
+        states_set = {}
+
+        for state in self.accept_states:
+            if self.accept_states[state][0] == category:
+                states_set[state] = None
+
+        return states_set
+
+    def split_set(self, set_key):
+
+        # 根据到达的结点分为集合名称
+        for state in self.state_sets[set_key]:
+
+            for set_name in self.state_sets:
+                if self.state_sets[set_key][state] in self.state_sets[set_name]:
+                    self.state_sets[set_key][state] = set_name
+                    break
+
+                elif self.state_sets[set_key][state] in self.accept_states:
+                    if self.accept_states[self.state_sets[set_key][state]][0] not in ['IDN', 'INT']:
+                        self.state_sets[set_key][state] = tuple(self.accept_states[self.state_sets[set_key][state]])
+
+        # 根据集合名称 进行分类 生成新的集合
+        new_set = {}
+        for state in self.state_sets[set_key]:
+            if self.state_sets[set_key][state] not in new_set:
+                new_set[self.state_sets[set_key][state]] = {state: None}
+            else:
+                new_set[self.state_sets[set_key][state]][state] = None
+
+        if len(new_set) > 1:
+            del self.state_sets[set_key]
+            for new_state in new_set:
+                self.sets_max_sqe[set_key[0]] += 1
+                self.state_sets[(set_key[0], self.sets_max_sqe[set_key[0]])] = new_set[new_state]
+            return True
+
+        return False
+
     def dfa_minimization(self):
-        pass
+
+        # IDN states dict
+        idn_set = self.sets('IDN')
+
+        # INT states dict
+        int_set = self.sets('INT')
+
+        # Initial division of the state set
+        self.state_sets = {('INT', self.sets_max_sqe['INT']): int_set,
+                           ('NON', self.sets_max_sqe['NON']): self.non_accept_states,
+                           ('IDN', self.sets_max_sqe['IDN']): idn_set}
+
+        # store the previous set number and current set number
+        pre_state_sets_num = 0
+        cur_state_sets_num = len(self.state_sets)
+
+        # Operate on each set until the set is no longer split
+        while cur_state_sets_num != pre_state_sets_num:
+
+            have_split = False
+
+            # Operate on each set
+            for set_key in self.state_sets:
+
+                # If the set contains only one state skip the set
+                if len(self.state_sets[set_key]) == 1:
+                    continue
+
+                # Save non-terminals that all nodes of the set can read in
+                terminal_set = []
+                for state in self.state_sets[set_key]:
+                    for ter in self.trans_function[state]:
+                        if ter not in terminal_set:
+                            terminal_set.append(ter)
+
+                # For each node in the set record the node reached after reading in the non-terminal
+                for ter in terminal_set:
+                    for state in self.state_sets[set_key]:
+                        try:
+                            self.state_sets[set_key][state] = tuple(self.trans_function[state][ter])
+                        except KeyError:
+                            continue
+
+                    # split the current set
+                    have_split = self.split_set(set_key)
+
+                    # If the set is split, start over from the beginning
+                    if have_split:
+                        break
+
+                # If the set is split, start over from the beginning
+                if have_split:
+                    break
+
+            # calculate the new pre_state_sets_num and cur_state_sets_num
+            pre_state_sets_num = cur_state_sets_num
+            cur_state_sets_num = len(self.state_sets)
+
+        # Add the rest of the accepting state that contain only one state to the state_sets
+        for state in self.accept_states:
+            if self.accept_states[state][0] not in ['IDN', 'INT']:
+                self.state_sets[tuple(self.accept_states[state])] = {state: None}
+
+        # Generate minimized DFA based on self.state_sets
+        return self.generate_minimize_dfa()
+
+    def generate_minimize_dfa(self):
+
+        # Preserve the mapping relationship of states between the original DFA and the minimized DFA
+        state_mapping = {}
+        for state_name in self.state_sets:
+            for state in self.state_sets[state_name]:
+                state_mapping[state] = state_name
+
+        # The start state of minimized-DFA
+        start_state = state_mapping[tuple(self.start_state)]
+
+        # The accept state of minimized-DFA
+        accept_states = {}
+        for state in self.accept_states:
+            accept_states[state_mapping[state]] = self.accept_states[state]
+
+        # The transfer function of minimized-DFA
+        trans_function = {}
+        for state in self.trans_function:
+            trans_function[state_mapping[state]] = {}
+            for ter in self.trans_function[state]:
+                trans_function[state_mapping[state]][ter] = state_mapping[tuple(self.trans_function[state][ter])]
+
+        # Return minimized-DFA
+        return DFA(start_state, accept_states, trans_function)
 
 
 class Lexer:
@@ -186,27 +342,19 @@ class Lexer:
         self.input_buffer = text
         line = 1
         pos = 1
+
         while self.input_buffer:
-            print(f'input_buf:{self.input_buffer}')
             self.output_buffer = ''
             del_cur_char_num = 0
             pre_char = ''
 
             for cur_char in self.input_buffer:
-                # print(f'line{line}:{cur_char}')
-                # if cur_char == '\n':
-                #     line += 1
-                #     self.input_buffer = self.input_buffer[1:]
-                #     break
                 del_cur_char_num += 1
-                pre_state, cur_state = dfa.run_on_dfa(cur_char)
+                pre_state, cur_state = self.dfa.run_on_dfa(cur_char)
                 if cur_state is None:
                     break
                 self.output_buffer += cur_char
                 pre_char = cur_char
-
-
-            # print(f'pre_char:{pre_char}.')
 
             if cur_state is None:
 
@@ -225,8 +373,10 @@ class Lexer:
                     else:
                         print('Error1')
                         break
+
                 elif pre_char == ' ':
                     self.input_buffer = self.input_buffer[del_cur_char_num - 1:]
+
                 else:
                     print('Error2')
                     break
@@ -246,27 +396,17 @@ class Lexer:
                 print('Error3')
                 break
 
-        print(line)
 
 
-import NFA_TRANS
-import test
+import nfa_definition
+import lexer_test
 
-nfa = NFA(NFA_TRANS.nfa_start, NFA_TRANS.nfa_accept, NFA_TRANS.nfa_trans)
-# nfa = NFA(0, test.acc,test.fun)
+nfa = NFA(nfa_definition.nfa_start, nfa_definition.nfa_accept, nfa_definition.nfa_trans)
 dfa = nfa.nfa2dfa()
-dfa.print_accept_states()
-dfa.print_trans_function()
-dfa.print_non_accept_states()
 lexer = Lexer(dfa)
-# text = 'SELECT *\nFROM T07\nWHERE 0.0 T07.A != "BLA BLA"'
-# text = text.replace('\n', ' ')
-# # print(text)
-# lexer.lexical_analysis(text)
-print()
-#
-# for s in dfa.accept_states:
-#     if dfa.accept_states[s][0] == 'INT':
-#         print(f'{s}\t{dfa.accept_states[s]}')
-
-
+mini_dfa = dfa.dfa_minimization()
+# mini_dfa.print_accept_states()
+lexer = Lexer(mini_dfa)
+text = 'SELECT * \nFROM T07 \nWHERE 0.0 T07.A != "BLA BLA"'
+text = text.replace('\n', ' ')
+lexer.lexical_analysis(text)
