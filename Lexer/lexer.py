@@ -1,22 +1,13 @@
-class SymbolTable:
-    def __init__(self):
-        self.table = {}
-
-    def add_to_table(self, lexeme, category):
-        self.table[lexeme] = category
-
-
 class Token:
-    def __init__(self, lexeme, category, seq, line, pos):
+    def __init__(self, lexeme, category, seq, keyword, pos):
         self.lexeme = lexeme
         self.category = category
         self.seq = seq
-        self.line = line
+        self.keyword = keyword
         self.pos = pos
-        print(f'{self.lexeme}\t<{self.category},{self.seq}>')
 
-
-symbol_table = SymbolTable()
+        if self.lexeme is not None:
+            print("%-10s<%s,%s>" % (self.lexeme, self.category, self.seq))
 
 
 class NFA:
@@ -337,10 +328,25 @@ class Lexer:
         for token in self.tokens:
             print(f'{token.lexeme}\t<{token.category},{token.seq}>')
 
+    def get_token_keyword(self, key, seq):
+
+        keyword_table = {'KW': [None, 'SELECT', 'FROM', 'WHERE', 'AS', '*', 'INSERT', 'INTO', 'VALUES', 'VALUE',
+                                'DEFAULT', 'UPDATE', 'SET', 'DELETE', 'JOIN', 'LEFT', 'RIGHT', 'ON',
+                                'MIN', 'MAX', 'AVG', 'SUM', 'UNION', 'ALL', 'GROUP BY', 'HAVING', 'DISTINCT',
+                                'ORDER BY', 'TRUE', 'FALSE', 'UNKNOWN', 'IS', 'NULL'],
+                         'OP': [None, '=', '>', '<', '>=', '<=', '!=', '<=>', 'AND', '&&', '||', 'OR', 'XOR', 'NOT',
+                                '!', '-', '.'],
+                         'SE': [None, '(', ')', ',']}
+
+        if key in keyword_table:
+            return keyword_table[key][seq]
+        else:
+            return key
+
     def lexical_analysis(self, text):
 
         self.input_buffer = text
-        line = 1
+        sql_text = text
         pos = 1
 
         while self.input_buffer:
@@ -349,6 +355,7 @@ class Lexer:
             pre_char = ''
 
             for cur_char in self.input_buffer:
+                pos += 1
                 del_cur_char_num += 1
                 pre_state, cur_state = self.dfa.run_on_dfa(cur_char)
                 if cur_state is None:
@@ -360,53 +367,64 @@ class Lexer:
 
                 if pre_state in self.dfa.accept_states:
                     if self.dfa.accept_states[pre_state][0] in ['IDN', 'STRING', 'INT', 'FLOAT']:
-                        self.dfa.accept_states[pre_state].append(1)
+                        try:
+                            self.dfa.accept_states[pre_state][1] = self.output_buffer
+                        except IndexError:
+                            self.dfa.accept_states[pre_state].append(self.output_buffer)
 
-                    if cur_char in [' ', '.', '*', '>', '<', '=', '&', '(', ')', ',', '|']:
+                    boundary_ter = [' ', '.', '*', '>', '<', '=', '&', '(', ')', ',', '|']
+                    if cur_char in boundary_ter or pre_char in boundary_ter:
                         self.input_buffer = self.input_buffer[del_cur_char_num - 1:]
+                        pos -= 1
                         self.tokens.append(Token(self.output_buffer, self.dfa.accept_states[pre_state][0],
-                                                 self.dfa.accept_states[pre_state][1], line, pos))
-                    elif pre_char in [' ', '.', '*', '>', '<', '=', '&', '(', ')', ',', '|']:
-                        self.input_buffer = self.input_buffer[del_cur_char_num - 1:]
-                        self.tokens.append(Token(self.output_buffer, self.dfa.accept_states[pre_state][0],
-                                                 self.dfa.accept_states[pre_state][1], line, pos))
+                                                 self.dfa.accept_states[pre_state][1],
+                                                 self.get_token_keyword(self.dfa.accept_states[pre_state][0],
+                                                                        self.dfa.accept_states[pre_state][1]),
+                                                 pos-len(self.output_buffer)))
+
                     else:
-                        print('Error1')
-                        break
+                        print('Error!')
+                        return
 
                 elif pre_char == ' ':
+                    pos -= 1
                     self.input_buffer = self.input_buffer[del_cur_char_num - 1:]
 
                 else:
-                    print('Error2')
-                    break
+                    print(sql_text)
+                    print(' ' * (pos-len(self.output_buffer)-2) + '^')
+                    print('Error: invalid syntax!')
+                    return
 
             elif cur_state in self.dfa.accept_states:
                 if self.dfa.accept_states[cur_state][0] in ['IDN', 'STRING', 'INT', 'FLOAT']:
-                    self.dfa.accept_states[cur_state].append(1)
+                    try:
+                        self.dfa.accept_states[cur_state][1] = self.output_buffer
+                    except IndexError:
+                        self.dfa.accept_states[cur_state].append(self.output_buffer)
 
                 self.input_buffer = self.input_buffer[del_cur_char_num:]
                 self.tokens.append(Token(self.output_buffer, self.dfa.accept_states[cur_state][0],
-                                         self.dfa.accept_states[cur_state][1], line, pos))
+                                         self.dfa.accept_states[cur_state][1],
+                                         self.get_token_keyword(self.dfa.accept_states[cur_state][0],
+                                                                self.dfa.accept_states[cur_state][1]),
+                                         pos-len(self.output_buffer)))
 
             elif cur_state == self.dfa.start_state:
                 self.input_buffer = self.input_buffer[del_cur_char_num:]
 
             else:
-                print('Error3')
-                break
+                print('Error!')
+                return
 
+        with open('Test/Output/49lex.tsv', 'w') as f:
+            text = ''
+            for token in self.tokens:
+                text += "%-10s<%s,%s>\n" % (token.lexeme, token.category, token.seq)
+            f.write(text)
 
+    def print_tokens_keyword(self):
+        for token in self.tokens:
+            print(token.keyword, end=' ')
+        print()
 
-import nfa_definition
-import lexer_test
-
-nfa = NFA(nfa_definition.nfa_start, nfa_definition.nfa_accept, nfa_definition.nfa_trans)
-dfa = nfa.nfa2dfa()
-lexer = Lexer(dfa)
-mini_dfa = dfa.dfa_minimization()
-# mini_dfa.print_accept_states()
-lexer = Lexer(mini_dfa)
-text = 'SELECT * \nFROM T07 \nWHERE 0.0 T07.A != "BLA BLA"'
-text = text.replace('\n', ' ')
-lexer.lexical_analysis(text)
