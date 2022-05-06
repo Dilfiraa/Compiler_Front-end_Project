@@ -1,13 +1,9 @@
 import copy
-
-
-class Token:
-    def __init__(self, name):
-        self.name = name
+from Lexer.lexer import Token
 
 
 class Parser:
-    def __init__(self, terminals, grammar_file, start_symbol, tokens):
+    def __init__(self, terminals, grammar_file, start_symbol):
         self.first_set = {}
         self.follow_set = {}
 
@@ -19,11 +15,19 @@ class Parser:
 
         self.terminals = terminals
 
-        self.tokens_queue = tokens
+        self.tokens_queue = None
         self.symbol_stack = ['#']
 
         self.grammar_file = grammar_file
         self.start_symbol = start_symbol
+
+        # initialize parser
+        self.generate_rules_table()
+        self.generate_pre_first_dict()
+        self.generate_first_set()
+        self.generate_pre_follow_dict()
+        self.generate_follow_set()
+        self.generate_parsing_table()
 
     def generate_rules_table(self):
 
@@ -149,7 +153,6 @@ class Parser:
                 print(f'{self.rules_table[rule_num][0]} -> {self.rules_table[rule_num][1]}')
             print()
 
-
     def first_of_rhs(self, rhs_list):
 
         index = 0
@@ -225,23 +228,30 @@ class Parser:
                     self.parsing_table[(rule[0], first_ter)] = seq_num
             seq_num += 1
 
+    def parse_tokens(self, tokens):
 
-    def parse_tokens(self):
+        self.tokens_queue = tokens
+
+        text = ''
+
         seq_num = 1
-        self.tokens_queue.append(Token('#'))
+        self.tokens_queue.append(Token(None, None, None, '#', None))
 
         while len(self.tokens_queue):
-            if self.symbol_stack[-1] == self.tokens_queue[0].name:
-                print(f'{seq_num}\t/\t{self.symbol_stack[-1]}#{self.tokens_queue[0].name}\tmove')
+            if self.symbol_stack[-1] == self.tokens_queue[0].keyword:
+                print(f'{seq_num}\t/\t{self.symbol_stack[-1]}#{self.tokens_queue[0].keyword}\tmove')
+                text += f'{seq_num}\t/\t{self.symbol_stack[-1]}#{self.tokens_queue[0].keyword}\tmove\n'
                 self.symbol_stack.pop()
                 self.tokens_queue.pop(0)
-            elif (self.symbol_stack[-1], self.tokens_queue[0].name) in self.parsing_table:
-                rule_num = self.parsing_table[(self.symbol_stack[-1], self.tokens_queue[0].name)]
+            elif (self.symbol_stack[-1], self.tokens_queue[0].keyword) in self.parsing_table:
+                rule_num = self.parsing_table[(self.symbol_stack[-1], self.tokens_queue[0].keyword)]
                 if self.rules_table[rule_num][1] == ['$']:
-                    print(f'{seq_num}\t{rule_num+1}\t{self.symbol_stack[-1]}#{self.tokens_queue[0].name}\treduction')
+                    print(f'{seq_num}\t{rule_num+1}\t{self.symbol_stack[-1]}#{self.tokens_queue[0].keyword}\treduction')
+                    text += f'{seq_num}\t{rule_num+1}\t{self.symbol_stack[-1]}#{self.tokens_queue[0].keyword}\treduction\n'
                     self.symbol_stack.pop()
                 else:
-                    print(f'{seq_num}\t{rule_num+1}\t{self.symbol_stack[-1]}#{self.tokens_queue[0].name}\treduction')
+                    print(f'{seq_num}\t{rule_num+1}\t{self.symbol_stack[-1]}#{self.tokens_queue[0].keyword}\treduction')
+                    text += f'{seq_num}\t{rule_num+1}\t{self.symbol_stack[-1]}#{self.tokens_queue[0].keyword}\treduction\n'
                     self.symbol_stack.pop()
                     for i in range(len(self.rules_table[rule_num][1]) - 1, -1, -1):
                         self.symbol_stack.append(self.rules_table[rule_num][1][i])
@@ -253,10 +263,13 @@ class Parser:
 
         print('accept!')
 
+        with open('Test/Output/49arg.tsv', 'w') as f:
+            f.write(text)
+
     def print_tokens_queue(self):
         print('token_queue :', end='\t')
         for tok in self.tokens_queue:
-            print(tok.name, end=' ')
+            print(tok.keyword, end=' ')
         print()
 
     def print_symbol_stack(self):
@@ -283,5 +296,19 @@ class Parser:
             print("Error : Option should be 'first' or 'follow'.")
 
 
-
+Terminals = {'SELECT', 'FROM', 'WHERE', 'AS', '*',
+             'INSERT', 'INTO', 'VALUES', 'VALUE', 'DEFAULT',
+             'UPDATE', 'SET',
+             'DELETE',
+             'JOIN', 'LEFT', 'RIGHT', 'ON',
+             'MIN', 'MAX', 'AVG', 'SUM',
+             'UNION', 'ALL',
+             'GROUP BY', 'HAVING', 'DISTINCT', 'ORDER BY',
+             'TRUE', 'FALSE', 'UNKNOWN', 'IS', 'NULL',
+             '=', '>', '<', '>=', '<=', '!=', '<=>',
+             'AND', '&&', '||', 'OR', 'XOR', 'NOT', '!',
+             '-',
+             '.',
+             '(', ')', ',',
+             'IDN', 'INT', 'FLOAT', 'STRING', '$'}
 
