@@ -66,8 +66,11 @@ uid -> IDN
 
 fullColumnName -> uid dottedId
 
-dottedId -> . uid
+dottedId -> . dottedIdOrStar
 dottedId -> $
+
+dottedIdOrStar -> uid
+dottedIdOrStar -> *
 
 expressions -> expression expressionRec
 expressionRec -> , expression expressionRec
@@ -76,12 +79,15 @@ expressionRec -> $
 expression -> opposite expression
 expression -> predicate expressionRight
 expressionRight -> logicalOperator expression
-expressionRight -> IS oppositeOrNot trueValue
+expressionRight -> IS oppositeOrNot nullOrTrueValue
 expressionRight -> $
 opposite -> NOT
 opposite -> !
 oppositeOrNot -> NOT
 oppositeOrNot -> $
+nullOrTrueValue -> nullValue
+nullOrTrueValue -> trueValue
+nullValue -> NULL
 trueValue -> TRUE
 trueValue -> FALSE
 trueValue -> UNKNOWN
@@ -93,6 +99,8 @@ predicateRight -> $
 expressionAtom -> constant
 expressionAtom -> fullColumnName
 expressionAtom -> functionCall
+
+nullNotnull -> oppositeOrNot NULL
 
 constant -> stringLiteral
 constant -> decimalLiteral
