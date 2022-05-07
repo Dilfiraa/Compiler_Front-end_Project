@@ -14,19 +14,19 @@ def main():
     nfa = NFA(nfa_definition.nfa_start, nfa_definition.nfa_accept, nfa_definition.nfa_trans)
     dfa = nfa.nfa2dfa()
     minimized_dfa = dfa.dfa_minimization()
+    lex_filepath = 'C:/Users/hp/Desktop/Compiler_Front-end_Project/Test/Output/49lex.tsv'
     lexer = Lexer(minimized_dfa)
-    lexer.lexical_analysis(text)
-
+    lexer.lexical_analysis(text, lex_filepath)
 
     # parsing
     start_symbol = 'root'
-    grammar_file = 'Parser\grammar.txt'
+    grammar_file = r'Parser\grammar.txt'
     parser = Parser(terminals=Terminals, grammar_file=grammar_file, start_symbol=start_symbol)
-
-
     print('\n\n')
+    parser.print_pre_first_dict()
     lexer.print_tokens_keyword()
-    parser.parse_tokens(lexer.tokens)
+    arg_filepath = 'C:/Users/hp/Desktop/Compiler_Front-end_Project/Test/Output/49arg.tsv'
+    parser.parse_tokens(lexer.tokens, arg_filepath)
 
     # while True:
     #     text = input('sql > ')
