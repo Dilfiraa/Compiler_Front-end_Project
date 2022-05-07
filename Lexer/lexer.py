@@ -328,7 +328,8 @@ class Lexer:
         for token in self.tokens:
             print(f'{token.lexeme}\t<{token.category},{token.seq}>')
 
-    def get_token_keyword(self, key, seq):
+    @staticmethod
+    def get_token_keyword(key, seq):
 
         keyword_table = {'KW': [None, 'SELECT', 'FROM', 'WHERE', 'AS', '*', 'INSERT', 'INTO', 'VALUES', 'VALUE',
                                 'DEFAULT', 'UPDATE', 'SET', 'DELETE', 'JOIN', 'LEFT', 'RIGHT', 'ON',
@@ -343,7 +344,7 @@ class Lexer:
         else:
             return key
 
-    def lexical_analysis(self, text):
+    def lexical_analysis(self, text, file_path):
 
         self.input_buffer = text
         sql_text = text
@@ -381,7 +382,6 @@ class Lexer:
                                                  self.get_token_keyword(self.dfa.accept_states[pre_state][0],
                                                                         self.dfa.accept_states[pre_state][1]),
                                                  pos-len(self.output_buffer)))
-
                     else:
                         print('Error!')
                         return
@@ -414,10 +414,13 @@ class Lexer:
                 self.input_buffer = self.input_buffer[del_cur_char_num:]
 
             else:
-                print('Error!')
+                if pre_char != ' ':
+                    print(sql_text)
+                    print(' ' * (pos - 2) + '^')
+                    print('Error: invalid syntax!')
                 return
 
-        with open('Test/Output/49lex.tsv', 'w') as f:
+        with open(file_path, 'w') as f:
             text = ''
             for token in self.tokens:
                 text += "%-10s<%s,%s>\n" % (token.lexeme, token.category, token.seq)
