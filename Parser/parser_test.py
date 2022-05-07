@@ -20,7 +20,7 @@ grammar_file = 'grammar.txt'
 token_keywords = ['SELECT', 'IDN', '.', 'IDN', 'FROM', 'IDN', 'WHERE', 'IDN', '.', 'IDN', '>', 'INT']
 tokens = keyword_list_to_token(token_keywords)
 
-
+filepath = 'C:/Users/hp/Desktop/Compiler_Front-end_Project/Test/Output/49arg.tsv'
 parser = Parser(terminals=Terminals, grammar_file=grammar_file, start_symbol=start_symbol)
 parser.parse_tokens(tokens)
 
