@@ -6,9 +6,10 @@ dfa = nfa.nfa2dfa()
 # lexer = Lexer(dfa)
 mini_dfa = dfa.dfa_minimization()
 lexer = Lexer(dfa)
+filepath = 'C:/Users/hp/Desktop/Compiler_Front-end_Project/Test/Output/49lex.tsv'
 text = 'SELECT * \nFROM T07 \nWHERE 0.0 T07.A != "BLA BLA"'
 text = text.replace('\n', ' ')
-lexer.lexical_analysis(text)
+lexer.lexical_analysis(text, filepath)
 
 
 fun = {1: {'a': [4, 5], '$': [2]},
