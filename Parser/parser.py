@@ -4,22 +4,31 @@ from Lexer.lexer import Token
 
 class Parser:
     def __init__(self, terminals, grammar_file, start_symbol):
+
+        # store first and follow set for every non-terminal
         self.first_set = {}
         self.follow_set = {}
 
-        self.rules_table = []
-        self.pre_first_dict = {}
-        self.pre_follow_dict = {}
-
-        self.parsing_table = {}
-
-        self.terminals = terminals
-
-        self.tokens_queue = None
-        self.symbol_stack = ['#']
-
+        # store LL(1) grammar
         self.grammar_file = grammar_file
         self.start_symbol = start_symbol
+        self.rules_table = []
+
+        # data structure ues to construct first set
+        self.pre_first_dict = {}
+
+        # data structure ues to construct follow set
+        self.pre_follow_dict = {}
+
+        # store the parsing table
+        self.parsing_table = {}
+
+        # store the terminals of the LL(1) grammar
+        self.terminals = terminals
+
+        # use to parse tokens
+        self.tokens_queue = None
+        self.symbol_stack = ['#']
 
         # initialize parser
         self.generate_rules_table()
@@ -29,15 +38,20 @@ class Parser:
         self.generate_follow_set()
         self.generate_parsing_table()
 
+    # read grammar from file and store to list
     def generate_rules_table(self):
 
+        # read grammar from file
         with open(self.grammar_file, "r") as f:
             for line in f:
+                # If it is a blank line, skip it
                 if line == '\n':
                     continue
 
+                # split the line with blank space
                 cur_line = line.split()
 
+                # Special processing of 'GROUP BY' and 'ORDER BY'
                 if 'GROUP' in cur_line:
                     cur_line[cur_line.index('GROUP')] = 'GROUP BY'
                     cur_line.remove('BY')
@@ -46,68 +60,97 @@ class Parser:
                     cur_line[cur_line.index('ORDER')] = 'ORDER BY'
                     cur_line.remove('BY')
 
+                # store the grammar to rules_table, example:
+                # querySpecification -> SELECT unionType selectElements selectClause
+                # [querySpecification, SELECT, unionType, selectElements, selectClause]
                 self.rules_table.append([cur_line[0], cur_line[2:]])
 
+    # generate new data structure for construct first set
     def generate_pre_first_dict(self):
+        # For each non-terminal save all generators of that
+        # non-terminal at the left hand side of the grammar
         seq = 0
         for rule in self.rules_table:
-            if rule[0] in self.pre_first_dict:
+            try:
                 self.pre_first_dict[rule[0]].append(seq)
-            else:
+            except KeyError:
                 self.pre_first_dict[rule[0]] = [seq]
             seq += 1
 
+    # use to debug : print pre_first_dict
     def print_pre_first_dict(self):
-        # for line in self.pre_first_dict:
-        #     print(f'{line}  {self.pre_first_dict[line]}')
         for line in self.pre_first_dict:
             print(line)
             for rule_num in self.pre_first_dict[line]:
                 print(self.rules_table[rule_num][1])
             print()
 
-    def first(self, lhs):
+    # construct first set for one terminal
+    def first(self, non_terminal):
 
-        for rule_num in self.pre_first_dict[lhs]:
+        # Consider all grammar with this non-terminal on the left-hand side
+        for rule_num in self.pre_first_dict[non_terminal]:
+
+            # if the right hand side of the grammar is started with terminal
+            # add the terminal to the first set
             if self.rules_table[rule_num][1][0] in self.terminals:
-                if lhs not in self.first_set:
-                    self.first_set[lhs] = copy.copy([self.rules_table[rule_num][1][0]])
-                else:
-                    self.first_set[lhs].append(self.rules_table[rule_num][1][0])
+                try:
+                    self.first_set[non_terminal].append(self.rules_table[rule_num][1][0])
+                except KeyError:
+                    self.first_set[non_terminal] = copy.copy([self.rules_table[rule_num][1][0]])
 
+            # if the grammar doesn't start with terminal
             else:
                 for nt in self.rules_table[rule_num][1]:
-                    if nt == lhs:
+                    # if the non-terminal is left-hand side non-terminal, skip it
+                    if nt == non_terminal:
                         continue
 
+                    # if there is a terminal at the right-hand side, add it to first
+                    # set and return
                     if nt in self.terminals:
-                        self.first_set[lhs].append(nt)
+                        self.first_set[non_terminal].append(nt)
                         break
 
+                    # If a non-terminal is encountered and the first-set of this
+                    # non-terminal is not yet computed, then computed the first-set of
+                    # this non-terminal first
                     if nt not in self.first_set:
                         self.first(nt)
 
-                    if '$' not in self.first_set[nt] or self.rules_table[rule_num][1].index(nt) == len(
-                            self.rules_table[rule_num][1]) - 1:
-                        if lhs not in self.first_set:
-                            self.first_set[lhs] = copy.copy(self.first_set[nt])
-                        else:
-                            self.add_lists(self.first_set[lhs], self.first_set[nt], False)
+                    # If a non-terminator is encountered and the first-set for that non-terminal has been calculated
+                    # if ε not in the first-set(nt) or non-terminal at the end of the grammar
+                    if '$' not in self.first_set[nt] or nt == self.rules_table[rule_num][1][-1]:
+                        # just add all the terminal in the first-set(nt) to the first-set of non_terminal
+                        try:
+                            # False : don't delete ε
+                            self.add_lists(self.first_set[non_terminal], self.first_set[nt], False)
+                        except KeyError:
+                            self.first_set[non_terminal] = copy.copy(self.first_set[nt])
                         break
-                    else:
-                        if lhs not in self.first_set:
-                            self.first_set[lhs] = copy.copy(self.first_set[nt])
-                            self.first_set[lhs].remove('$')
-                        else:
-                            self.add_lists(self.first_set[lhs], self.first_set[nt], True)
 
+                    # if ε in the first-set(nt) and non-terminal nt not at the end of the grammar
+                    else:
+                        # just add the terminal in the first-set(nt) to the first-set of non_terminal (except ε !)
+                        try:
+                            # False : don't delete ε
+                            self.add_lists(self.first_set[non_terminal], self.first_set[nt], True)
+                        except KeyError:
+                            self.first_set[non_terminal] = copy.copy(self.first_set[nt])
+                            self.first_set[non_terminal].remove('$')
+
+        return
+
+    # generate first set for every non-terminal
     def generate_first_set(self):
-        for lhs in self.pre_first_dict:
-            if lhs in self.first_set:
+        # for every non-terminal call first
+        for nt in self.pre_first_dict:
+            if nt in self.first_set:
                 continue
             else:
-                self.first(lhs)
+                self.first(nt)
 
+    # use to debug : print rules table
     def print_rules_table(self):
         seq = 1
         for line in self.rules_table:
@@ -122,6 +165,7 @@ class Parser:
                 continue
             list1.append(item)
 
+    # print first set
     def print_first_set(self):
         print('\n\n')
         print('+-------------------------------------------------------------------+')
@@ -134,18 +178,23 @@ class Parser:
             print(self.first_set[non_ter][-1], end='],\n')
         print('\n\n')
 
+    # create new data structure for follow-set generation
     def generate_pre_follow_dict(self):
+        # create new dictionary, key value is non-terminal
         for rule in self.rules_table:
             self.pre_follow_dict[rule[0]] = []
 
+        # for each terminal store all the rule numbers that this terminal has
+        # appeared on the right-hand side of the rule
         seq = 0
         for line in self.rules_table:
-            for rule in line[1]:
-                if rule in self.terminals:
+            for nt in line[1]:
+                if nt in self.terminals:
                     continue
-                self.pre_follow_dict[rule].append(seq)
+                self.pre_follow_dict[nt].append(seq)
             seq += 1
 
+    # use to debug : print pre_follow_dict
     def print_pre_follow_dict(self):
         for line in self.pre_follow_dict:
             print(line)
@@ -157,42 +206,66 @@ class Parser:
 
         index = 0
         result = []
-        for v in rhs_list:
-            if v in self.terminals:
-                self.add_lists(result, [v], False)
+
+        # for every symbol in the right-hand side
+        for s in rhs_list:
+            # is s is terminal
+            if s in self.terminals:
+                self.add_lists(result, [s], False)
                 break
-            elif '$' not in self.first_set[v]:
-                self.add_lists(result, self.first_set[v], False)
+
+            # if s is non-terminal and first-set(s) dose not contain ε
+            elif '$' not in self.first_set[s]:
+                self.add_lists(result, self.first_set[s], False)
                 break
+
+            # if s is non-terminal and it's not the last symbol
             elif index < len(rhs_list) - 1:
-                self.add_lists(result, self.first_set[v], True)
+                self.add_lists(result, self.first_set[s], True)
+
+            # if s is non-terminal and it is the last symbol
             else:
-                self.add_lists(result, self.first_set[v], False)
+                self.add_lists(result, self.first_set[s], False)
+
             index += 1
 
         return result
 
+    # generate follow set for all the non-terminals
     def generate_follow_set(self):
 
         temp = {}
-        self.symbol_stack.append(self.start_symbol)
 
+        # create empty follow set for every terminal
         for rule in self.rules_table:
             self.follow_set[rule[0]] = []
+            
+        # start symbol doesn't appear at right-hand side of the grammar
+        # so the follow-set of start-symbol is #
         self.follow_set[self.start_symbol].append('#')
-
+        
+        # for every non-terminal
         for lhs in self.pre_follow_dict:
-            for seq_num in self.pre_follow_dict[lhs]:
+            
+            # for every rule that the current non-terminal appear at the right-hand side
+            for seq_num in self.pre_follow_dict[lhs]:      
+                
                 start = self.rules_table[seq_num][1].index(lhs) + 1
                 first_of_r = self.first_of_rhs(self.rules_table[seq_num][1][start:])
-                # print(self.rules_table[seq_num][1][start:], '   ', first_of_r)
+                
+                # if the first of right-hand side does not contain ε and
+                # first of right-hand side is empty (non-terminal does not at the end of the rule)
                 if '$' not in first_of_r and len(first_of_r):
                     self.add_lists(self.follow_set[lhs], first_of_r, False)
+
+                # if the first of right-hand side contain ε and
+                # non-terminal is at the end of the rule
                 else:
                     self.add_lists(self.follow_set[lhs], first_of_r, True)
-                    if lhs in temp:
+                    # add symbol to temp
+                    try:
                         temp[lhs].append(self.rules_table[seq_num][0])
-                    else:
+                    except KeyError:
                         temp[lhs] = [self.rules_table[seq_num][0]]
 
         # need to be optimize!!!
@@ -228,10 +301,12 @@ class Parser:
                     self.parsing_table[(rule[0], first_ter)] = seq_num
             seq_num += 1
 
-    def parse_tokens(self, tokens):
+    def parse_tokens(self, tokens, file_path):
 
         self.tokens_queue = tokens
+        self.symbol_stack.append(self.start_symbol)
 
+        # store the output result
         text = ''
 
         seq_num = 1
@@ -261,36 +336,40 @@ class Parser:
 
             seq_num += 1
 
-        print('accept!')
+        print('Accept!')
 
-        with open('Test/Output/49arg.tsv', 'w') as f:
+        # write the result to file
+        with open(file_path, 'w') as f:
             f.write(text)
 
+    # use to debug : print parsing token queue
     def print_tokens_queue(self):
         print('token_queue :', end='\t')
         for tok in self.tokens_queue:
             print(tok.keyword, end=' ')
         print()
 
+    # use to debug : print parsing symbol stack
     def print_symbol_stack(self):
         print('symbol_stack:', end='\t')
         for index in range(len(self.symbol_stack) - 1, -1, -1):
             print(self.symbol_stack[index], end=' ')
         print()
-
-    def print_first_or_follow(self, Non_Terminal, option):
+    
+    # print first or follow set for non-terminal
+    def print_first_or_follow(self, non_terminal, option):
 
         if option == 'follow':
-            if Non_Terminal in self.follow_set:
-                print(f'\nfollow( {Non_Terminal} )\t= {self.follow_set[Non_Terminal]}')
+            if non_terminal in self.follow_set:
+                print(f'\nfollow( {non_terminal} )\t= {self.follow_set[non_terminal]}')
             else:
-                print(f"Error : '{Non_Terminal}' is not an non-terminal")
+                print(f"Error : '{non_terminal}' is not an non-terminal")
 
         elif option == 'first':
-            if Non_Terminal in self.first_set:
-                print(f'\nfirst( {Non_Terminal} ) \t= {self.first_set[Non_Terminal]}')
+            if non_terminal in self.first_set:
+                print(f'\nfirst( {non_terminal} ) \t= {self.first_set[non_terminal]}')
             else:
-                print(f"Error : '{Non_Terminal}' is not an non-terminal")
+                print(f"Error : '{non_terminal}' is not an non-terminal")
 
         else:
             print("Error : Option should be 'first' or 'follow'.")
