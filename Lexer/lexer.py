@@ -16,6 +16,7 @@ class NFA:
         self.accept_states = accept_states
         self.trans_function = trans_function
         self.non_accept_states = self.get_non_accept_states()
+        self.state_num = len(self.accept_states) + len(self.non_accept_states)
 
     def get_non_accept_states(self):
         result = {}
@@ -70,6 +71,7 @@ class NFA:
 
             # get state from queue
             states = queue[0]
+
             # Store all terminals that can cause the nodes in the set to transfer
             terminal_set = set()
 
@@ -183,7 +185,7 @@ class DFA:
 
         return self.pre_state, self.cur_state
 
-    def sets(self, category):
+    def initial_set(self, category):
         states_set = {}
 
         for state in self.accept_states:
@@ -226,10 +228,10 @@ class DFA:
     def dfa_minimization(self):
 
         # IDN states dict
-        idn_set = self.sets('IDN')
+        idn_set = self.initial_set('IDN')
 
         # INT states dict
-        int_set = self.sets('INT')
+        int_set = self.initial_set('INT')
 
         # Initial division of the state set
         self.state_sets = {('INT', self.sets_max_sqe['INT']): int_set,
@@ -288,9 +290,9 @@ class DFA:
                 self.state_sets[tuple(self.accept_states[state])] = {state: None}
 
         # Generate minimized DFA based on self.state_sets
-        return self.generate_minimize_dfa()
+        return self.generate_minimized_dfa()
 
-    def generate_minimize_dfa(self):
+    def generate_minimized_dfa(self):
 
         # Preserve the mapping relationship of states between the original DFA and the minimized DFA
         state_mapping = {}
@@ -373,7 +375,7 @@ class Lexer:
                         except IndexError:
                             self.dfa.accept_states[pre_state].append(self.output_buffer)
 
-                    boundary_ter = [' ', '.', '*', '>', '<', '=', '&', '(', ')', ',', '|']
+                    boundary_ter = [' ', '.', '*', '>', '<', '=', '&', '(', ')', ',', '|', '-']
                     if cur_char in boundary_ter or pre_char in boundary_ter:
                         self.input_buffer = self.input_buffer[del_cur_char_num - 1:]
                         pos -= 1
@@ -383,7 +385,9 @@ class Lexer:
                                                                         self.dfa.accept_states[pre_state][1]),
                                                  pos-len(self.output_buffer)))
                     else:
-                        print('Error!')
+                        print(sql_text)
+                        print(' ' * (pos - len(self.output_buffer) - 2) + '^')
+                        print('Error: invalid syntax!')
                         return
 
                 elif pre_char == ' ':
