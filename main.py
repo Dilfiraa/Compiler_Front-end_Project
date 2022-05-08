@@ -1,42 +1,66 @@
 from Lexer import nfa_definition
 from Lexer.lexer import *
 from Parser.parser import Parser, Terminals
+import os
+print(os.getcwd())
 
 
 def main():
 
-    # lexer
-    text = 'SELECT * 07M.11 FROM T07 WHERE T07.A != "BLA BLA" '
-    text = 'SELECT from_._1_,SUM(from_._2_) FROM from_ JOIN _1A ON from_._1_=_1A.cr7 WHERE from_._2_>1 AND from_._3_' \
-           '<3.1415926 OR 1.25 IS NOT NULL GROUP BY from_._2_ HAVING from_._3_="ORDER BY #><=="'
+    print("\nWelcome to SQL-- Compiler Front-end!")
+    print("\t1. Read the SQL statement from the file\n" \
+          "\t2. Input SQL statement from terminal")
+    option = input('> ')
 
-    # lexical analysis
+    # lexer
     nfa = NFA(nfa_definition.nfa_start, nfa_definition.nfa_accept, nfa_definition.nfa_trans)
     dfa = nfa.nfa2dfa()
     minimized_dfa = dfa.dfa_minimization()
-    lex_filepath = 'C:/Users/hp/Desktop/Compiler_Front-end_Project/Test/Output/49lex.tsv'
+    filepath = os.getcwd() + '\\Test\\Output\\'
     lexer = Lexer(minimized_dfa)
-    lexer.lexical_analysis(text, lex_filepath)
 
-    # parsing
+    # parser
     start_symbol = 'root'
     grammar_file = r'Parser\grammar.txt'
     parser = Parser(terminals=Terminals, grammar_file=grammar_file, start_symbol=start_symbol)
-    print('\n\n')
-    parser.print_pre_first_dict()
-    lexer.print_tokens_keyword()
-    arg_filepath = 'C:/Users/hp/Desktop/Compiler_Front-end_Project/Test/Output/49arg.tsv'
-    parser.parse_tokens(lexer.tokens, arg_filepath)
 
-    # while True:
-    #     text = input('sql > ')
-    #
-    #     lexer.lexical_analysis(text)
-    #
-    #     print('\n\n')
-    #     lexer.print_tokens_keyword()
-    #     parser.parse_tokens(lexer.tokens)
+    sql_filepath = os.getcwd() + '\\Test\\Input\\'
+
+    if int(option) == 1:
+        file_name = input('\nPleas input file name > ')
+        sql_filepath += file_name
+
+        with open(sql_filepath) as fp:
+            text = fp.read()
+
+        group = file_name.split('.')[0][-1]
+
+        print('\n----------------------  LEXICAL ANALYSIS ----------------------')
+        lexer.lexical_analysis(text, filepath + f'47{group}lex.tsv')
+        print('---------------------------------------------------------------')
+
+        print('\n\n')
+        print('-----------------------  SYNTAX ANALYSIS ----------------------')
+        lexer.print_tokens_keyword()
+        parser.parse_tokens(lexer.tokens, filepath + f'47{group}gra.tsv')
+        print('---------------------------------------------------------------')
+
+    elif int(option) == 2:
+
+        while True:
+            text = input('\nsql > ')
+
+            print('\n----------------------  LEXICAL ANALYSIS ----------------------')
+            lexer.lexical_analysis(text, filepath + 'lex.tsv')
+            print('---------------------------------------------------------------')
+
+            print('\n\n')
+            print('-----------------------  SYNTAX ANALYSIS ----------------------')
+            lexer.print_tokens_keyword()
+            parser.parse_tokens(lexer.tokens, filepath + 'gra.tsv')
+            print('---------------------------------------------------------------')
 
 
 if __name__ == '__main__':
     main()
+
