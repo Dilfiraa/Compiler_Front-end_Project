@@ -199,10 +199,10 @@ class Parser:
         for line in self.pre_follow_dict:
             print(line)
             for rule_num in self.pre_follow_dict[line]:
-                print(f'{self.rules_table[rule_num][0]} -> {self.rules_table[rule_num][1]}')
+                print(f'{rule_num}\t{self.rules_table[rule_num][0]} -> {self.rules_table[rule_num][1]}')
             print()
 
-    def first_of_rhs(self, rhs_list):
+    def first_of_symbols(self, rhs_list):
 
         index = 0
         result = []
@@ -245,37 +245,37 @@ class Parser:
         self.follow_set[self.start_symbol].append('#')
         
         # for every non-terminal
-        for lhs in self.pre_follow_dict:
+        for symbol in self.pre_follow_dict:
             
             # for every rule that the current non-terminal appear at the right-hand side
-            for seq_num in self.pre_follow_dict[lhs]:      
+            for seq_num in self.pre_follow_dict[symbol]:      
                 
-                start = self.rules_table[seq_num][1].index(lhs) + 1
-                first_of_r = self.first_of_rhs(self.rules_table[seq_num][1][start:])
+                start = self.rules_table[seq_num][1].index(symbol) + 1
+                first_of_rhs = self.first_of_symbols(self.rules_table[seq_num][1][start:])
                 
                 # if the first of right-hand side does not contain ε and
                 # first of right-hand side is empty (non-terminal does not at the end of the rule)
-                if '$' not in first_of_r and len(first_of_r):
-                    self.add_lists(self.follow_set[lhs], first_of_r, False)
+                if '$' not in first_of_rhs and len(first_of_rhs):
+                    self.add_lists(self.follow_set[symbol], first_of_rhs, False)
 
                 # if the first of right-hand side contain ε and
                 # non-terminal is at the end of the rule
                 else:
-                    self.add_lists(self.follow_set[lhs], first_of_r, True)
+                    self.add_lists(self.follow_set[symbol], first_of_rhs, True)
                     # add symbol to temp
                     try:
-                        temp[lhs].append(self.rules_table[seq_num][0])
+                        temp[symbol].append(self.rules_table[seq_num][0])
                     except KeyError:
-                        temp[lhs] = [self.rules_table[seq_num][0]]
+                        temp[symbol] = [self.rules_table[seq_num][0]]
 
         # need to be optimize!!!
-        for item in temp:
-            for nt in temp[item]:
-                self.add_lists(self.follow_set[item], self.follow_set[nt], False)
+        for symbol in temp:
+            for nt in temp[symbol]:
+                self.add_lists(self.follow_set[symbol], self.follow_set[nt], False)
 
-        for item in temp:
-            for nt in temp[item]:
-                self.add_lists(self.follow_set[item], self.follow_set[nt], False)
+        for symbol in temp:
+            for nt in temp[symbol]:
+                self.add_lists(self.follow_set[symbol], self.follow_set[nt], False)
 
     def print_follow_set(self):
         print('\n\n')
@@ -283,6 +283,9 @@ class Parser:
         print('|---------------------------- Follow Set ----------------------------|')
         print('+--------------------------------------------------------------------+')
         for non_ter in self.follow_set:
+            if len(self.follow_set[non_ter]) == 0:
+                print(f'{non_ter}=[]')
+                continue
             print(f'{non_ter}=[', end='')
             for i in range(len(self.follow_set[non_ter]) - 1):
                 print(self.follow_set[non_ter][i], end=', ')
@@ -293,7 +296,7 @@ class Parser:
 
         seq_num = 0
         for rule in self.rules_table:
-            for first_ter in self.first_of_rhs(rule[1]):
+            for first_ter in self.first_of_symbols(rule[1]):
                 if '$' == first_ter:
                     for follow_ter in self.follow_set[rule[0]]:
                         self.parsing_table[(rule[0], follow_ter)] = seq_num
@@ -301,16 +304,24 @@ class Parser:
                     self.parsing_table[(rule[0], first_ter)] = seq_num
             seq_num += 1
 
+    def print_parsing_table(self):
+        for key in self.parsing_table:
+            rule = self.rules_table[self.parsing_table[key]]
+            rhs = ''
+            for symbol in rule[1]:
+                rhs += symbol + ' '
+            print(f'{key}\t{self.parsing_table[key]} {rule[0]} -> {rhs}')
+
     def parse_tokens(self, tokens, file_path):
 
         self.tokens_queue = tokens
+        self.tokens_queue.append(Token(None, None, None, '#', None))
+
         self.symbol_stack.append(self.start_symbol)
+        seq_num = 1
 
         # store the output result
         text = ''
-
-        seq_num = 1
-        self.tokens_queue.append(Token(None, None, None, '#', None))
 
         while len(self.tokens_queue):
             if self.symbol_stack[-1] == self.tokens_queue[0].keyword:
@@ -318,6 +329,7 @@ class Parser:
                 text += f'{seq_num}\t/\t{self.symbol_stack[-1]}#{self.tokens_queue[0].keyword}\tmove\n'
                 self.symbol_stack.pop()
                 self.tokens_queue.pop(0)
+
             elif (self.symbol_stack[-1], self.tokens_queue[0].keyword) in self.parsing_table:
                 rule_num = self.parsing_table[(self.symbol_stack[-1], self.tokens_queue[0].keyword)]
                 if self.rules_table[rule_num][1] == ['$']:
