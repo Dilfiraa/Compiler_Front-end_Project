@@ -2,15 +2,9 @@ from Lexer import nfa_definition
 from Lexer.lexer import *
 from Parser.parser import Parser, Terminals
 import os
-print(os.getcwd())
 
 
 def main():
-
-    print("\nWelcome to SQL-- Compiler Front-end!")
-    print("\t1. Read the SQL statement from the file\n" \
-          "\t2. Input SQL statement from terminal")
-    option = input('> ')
 
     # lexer
     nfa = NFA(nfa_definition.nfa_start, nfa_definition.nfa_accept, nfa_definition.nfa_trans)
@@ -26,28 +20,47 @@ def main():
 
     sql_filepath = os.getcwd() + '\\Test\\Input\\'
 
-    if int(option) == 1:
-        file_name = input('\nPleas input file name > ')
-        sql_filepath += file_name
+    print("\n+---------------------------------------------------+")
+    print("|\tWelcome to SQL-- Compiler Front-end!\t\t\t|")
+    print("|\t\t1. Read the SQL statement from the file\t\t|\n"
+          "|\t\t2. Input SQL statement from terminal\t\t|")
+    print("+---------------------------------------------------+")
 
-        with open(sql_filepath) as fp:
-            text = fp.read()
+    while True:
 
-        group = file_name.split('.')[0][-1]
+        print("\nPlease input 1 or 2 to parse sql statement or input exit to exit.")
+        option = input('> ')
 
-        print('\n----------------------  LEXICAL ANALYSIS ----------------------')
-        lexer.lexical_analysis(text, filepath + f'47{group}lex.tsv')
-        print('---------------------------------------------------------------')
+        try:
+            option = int(option)
+        except ValueError:
+            pass
 
-        print('\n\n')
-        print('-----------------------  SYNTAX ANALYSIS ----------------------')
-        lexer.print_tokens_keyword()
-        parser.parse_tokens(lexer.tokens, filepath + f'47{group}gra.tsv')
-        print('---------------------------------------------------------------')
+        if option == 1:
+            file_name = input('\nPleas input file name > ')
+            sql_filepath += file_name
 
-    elif int(option) == 2:
+            try:
+                with open(sql_filepath) as fp:
+                    text = fp.read()
+            except FileNotFoundError:
+                print("Error: Please check if the file name is correct or if the file is in the Test/input folder.")
+                continue
 
-        while True:
+            group = file_name.split('.')[0][-1]
+
+            print('\n----------------------  LEXICAL ANALYSIS ----------------------')
+            lexer.lexical_analysis(text, filepath + f'47{group}lex.tsv')
+            print('---------------------------------------------------------------')
+
+            print('\n\n')
+            print('-----------------------  SYNTAX ANALYSIS ----------------------')
+            lexer.print_tokens_keyword()
+            parser.parse_tokens(lexer.tokens, filepath + f'47{group}gra.tsv')
+            print('---------------------------------------------------------------')
+
+        elif option == 2:
+
             text = input('\nsql > ')
 
             print('\n----------------------  LEXICAL ANALYSIS ----------------------')
@@ -59,6 +72,12 @@ def main():
             lexer.print_tokens_keyword()
             parser.parse_tokens(lexer.tokens, filepath + 'gra.tsv')
             print('---------------------------------------------------------------')
+
+        elif option == 'exit':
+            break
+
+        else:
+            print("Error: Pleas input 1 ,2 or exit.\n")
 
 
 if __name__ == '__main__':
