@@ -3,7 +3,7 @@ from Lexer.lexer import Token
 
 
 class Parser:
-    def __init__(self, terminals, grammar_file, start_symbol):
+    def __init__(self, terminals, grammar_file, start_symbol, symbol_table):
 
         # store first and follow set for every non-terminal
         self.first_set = {}
@@ -37,6 +37,9 @@ class Parser:
         self.generate_pre_follow_dict()
         self.generate_follow_set()
         self.generate_parsing_table()
+
+        # symbol_table
+        self.symbol_table = symbol_table
 
     # read grammar from file and store to list
     def generate_rules_table(self):
@@ -315,7 +318,7 @@ class Parser:
     def parse_tokens(self, tokens, file_path):
         self.symbol_stack = ['#']
         self.tokens_queue = tokens
-        self.tokens_queue.append(Token(None, None, None, '#', None))
+        self.tokens_queue.append(Token(None, None, None, '#', None, self.symbol_table))
 
         self.symbol_stack.append(self.start_symbol)
         seq_num = 1

@@ -1,5 +1,24 @@
+class SymbolTable:
+    def __init__(self):
+        self.table = {}
+
+    def add_to_table(self, lexeme, category, pos):
+        if category == 'IDN' or category == 'STRING':
+            try:
+                self.table[lexeme]['pos'].append(pos)
+            except KeyError:
+                self.table[lexeme] = {'category': category, 'pos': [pos]}
+
+
+    def print_table(self):
+        print('\n\n\n-----------------------   SYMBOL TABLE   ----------------------')
+        for line in self.table:
+            print(f"{line}\t{self.table[line]['category']}\t{self.table[line]['pos']}")
+        print('---------------------------------------------------------------')
+
+
 class Token:
-    def __init__(self, lexeme, category, seq, keyword, pos):
+    def __init__(self, lexeme, category, seq, keyword, pos, symbol_table):
         self.lexeme = lexeme
         self.category = category
         self.seq = seq
@@ -8,6 +27,7 @@ class Token:
 
         if self.lexeme is not None:
             print("%-10s<%s,%s>" % (self.lexeme, self.category, self.seq))
+            symbol_table.add_to_table(self.lexeme, self.category, self.pos)
 
 
 class NFA:
@@ -320,11 +340,12 @@ class DFA:
 
 
 class Lexer:
-    def __init__(self, dfa):
+    def __init__(self, dfa, symbol_table):
         self.dfa = dfa
         self.input_buffer = ''
         self.output_buffer = ''
         self.tokens = []
+        self.symbol_table = symbol_table
 
     def print_tokens(self):
         for token in self.tokens:
@@ -390,7 +411,7 @@ class Lexer:
                                                  self.dfa.accept_states[pre_state][1],
                                                  self.get_token_keyword(self.dfa.accept_states[pre_state][0],
                                                                         self.dfa.accept_states[pre_state][1]),
-                                                 pos-len(self.output_buffer)))
+                                                 pos-len(self.output_buffer), self.symbol_table))
                     else:
                         print(sql_text)
                         print(' ' * (pos - len(self.output_buffer) - 2) + '^')
@@ -419,7 +440,7 @@ class Lexer:
                                          self.dfa.accept_states[cur_state][1],
                                          self.get_token_keyword(self.dfa.accept_states[cur_state][0],
                                                                 self.dfa.accept_states[cur_state][1]),
-                                         pos-len(self.output_buffer)))
+                                         pos-len(self.output_buffer), self.symbol_table))
 
             elif cur_state == self.dfa.start_state:
                 self.input_buffer = self.input_buffer[del_cur_char_num:]

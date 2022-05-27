@@ -1,22 +1,24 @@
 from Lexer import nfa_definition
 from Lexer.lexer import *
-from Parser.parser import Parser, Terminals
+from Parser.parser import *
 import os
 
 
 def main():
+    # symbol table
+    symbol_table= SymbolTable()
 
     # lexer
     nfa = NFA(nfa_definition.nfa_start, nfa_definition.nfa_accept, nfa_definition.nfa_trans)
     dfa = nfa.nfa2dfa()
     minimized_dfa = dfa.dfa_minimization()
     filepath = os.getcwd() + '\\Test\\Output\\'
-    lexer = Lexer(minimized_dfa)
+    lexer = Lexer(minimized_dfa, symbol_table)
 
     # parser
     start_symbol = 'root'
     grammar_file = r'Parser\grammar.txt'
-    parser = Parser(terminals=Terminals, grammar_file=grammar_file, start_symbol=start_symbol)
+    parser = Parser(Terminals, grammar_file, start_symbol, symbol_table)
 
     sql_filepath = os.getcwd() + '\\Test\\Input\\'
 
@@ -72,6 +74,8 @@ def main():
             lexer.print_tokens_keyword()
             parser.parse_tokens(lexer.tokens, filepath + 'gra.tsv')
             print('---------------------------------------------------------------')
+
+            symbol_table.print_table()
 
         elif option == 'exit':
             break
