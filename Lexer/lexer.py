@@ -348,6 +348,13 @@ class Lexer:
 
     def lexical_analysis(self, text, file_path):
 
+        # initialize tokens buffer
+        self.tokens = []
+
+        # initialize dfa
+        self.dfa.cur_state = tuple(self.dfa.start_state)
+        self.dfa.pre_state = None
+
         self.input_buffer = text
         sql_text = text
         pos = 1

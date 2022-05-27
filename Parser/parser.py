@@ -313,7 +313,7 @@ class Parser:
             print(f'{key}\t{self.parsing_table[key]} {rule[0]} -> {rhs}')
 
     def parse_tokens(self, tokens, file_path):
-
+        self.symbol_stack = ['#']
         self.tokens_queue = tokens
         self.tokens_queue.append(Token(None, None, None, '#', None))
 
