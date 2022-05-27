@@ -61,6 +61,8 @@ def main():
             parser.parse_tokens(lexer.tokens, filepath + f'47{group}gra.tsv')
             print('---------------------------------------------------------------')
 
+            # symbol_table.print_table()
+
         elif option == 2:
 
             text = input('\nsql > ')
@@ -75,7 +77,7 @@ def main():
             parser.parse_tokens(lexer.tokens, filepath + 'gra.tsv')
             print('---------------------------------------------------------------')
 
-            symbol_table.print_table()
+            # symbol_table.print_table()
 
         elif option == 'exit':
             break
